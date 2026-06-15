@@ -1,16 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
-import { ReactFlow, ReactFlowProvider, Controls } from "@xyflow/react";
+import { useMemo, useCallback } from "react";
+import { ReactFlow, ReactFlowProvider, Controls, useReactFlow } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import PersonNode from "./PersonNode";
 
-// Register our custom node type. Defined OUTSIDE the component so it stays the
-// same object across renders (React Flow warns if this is recreated each time).
 const nodeTypes = { person: PersonNode };
 
-function GraphInner({ people }) {
-  // Transform DB people → React Flow nodes. Recompute only when `people` changes.
+function GraphInner({ people, selectedId, onSelect, onPaneCreate, onOpenPerson }) {
+  const { screenToFlowPosition } = useReactFlow();
+
   const nodes = useMemo(
     () =>
       people.map((p) => ({
@@ -18,8 +17,31 @@ function GraphInner({ people }) {
         type: "person",
         position: { x: p.position_x, y: p.position_y },
         data: { name: p.name, ask: p.ask, status: p.status },
+        selected: selectedId === p.id,   // ← drive "selected" from our own state
       })),
-    [people]
+    [people, selectedId]
+  );
+
+  // Click on empty canvas → deselect + open create popup at that spot.
+  const onPaneClick = useCallback(
+    (event) => {
+      onSelect(null);
+      const pos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      onPaneCreate(pos);
+    },
+    [screenToFlowPosition, onPaneCreate, onSelect]
+  );
+
+  // Click on a node → select it + open edit popup.
+  const onNodeClick = useCallback(
+    (_e, node) => {
+      const person = people.find((p) => String(p.id) === node.id);
+      if (person) {
+        onSelect(person.id);
+        onOpenPerson(person);
+      }
+    },
+    [people, onSelect, onOpenPerson]
   );
 
   return (
@@ -27,6 +49,8 @@ function GraphInner({ people }) {
       <ReactFlow
         nodes={nodes}
         nodeTypes={nodeTypes}
+        onPaneClick={onPaneClick}
+        onNodeClick={onNodeClick}
         fitView
         fitViewOptions={{ padding: 0.35 }}
         proOptions={{ hideAttribution: true }}
@@ -38,7 +62,6 @@ function GraphInner({ people }) {
   );
 }
 
-// React Flow needs to be wrapped in a provider to share its internal state.
 export default function GraphView(props) {
   return (
     <ReactFlowProvider>
