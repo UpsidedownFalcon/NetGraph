@@ -40,5 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# claude code
+# genAI
 .claude/
+.embedder. 
+
+# local database 
+/data/ 
