@@ -1,49 +1,65 @@
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Surfaces (backgrounds, from darkest to lightest) */
+  --bg-deep: #08090d;
+  --bg-elevated: #14161d;
+  --bg-elevated-2: #1c1f28;
+  --border-subtle: #2a2e3a;
+
+  /* Text */
+  --text-primary: #e8eaf0;
+  --text-secondary: #9aa0b0;
+  --text-muted: #5c6273;
+
+  /* Status colors (one per relationship status) */
+  --status-known: #f2f5fb;
+  --status-contact: #f2c94c;
+  --status-avoid: #eb6f72;
+  --status-friend: #6fcf97;
+
+  /* Glows (semi-transparent versions of the status colors, for the dot halos) */
+  --glow-known: rgba(180, 205, 255, 0.45);
+  --glow-contact: rgba(242, 201, 76, 0.45);
+  --glow-avoid: rgba(235, 111, 114, 0.45);
+  --glow-friend: rgba(111, 207, 151, 0.45);
+
+  /* Arrows (used later, for relationship lines) */
+  --edge-default: #3a4150;
+  --edge-active: #8a93a8;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Make width/height include padding & border — saner sizing for every element */
+* {
+  box-sizing: border-box;
 }
 
-html {
+/* Fill the whole window with the deep background and set base text styles */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+main {
   height: 100%;
 }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
+button {
+  font-family: inherit;
+  cursor: pointer;
 }
 
-body {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+input,
+select,
+textarea {
+  font-family: inherit;
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+/* Helper class to render text in the monospace font */
+.mono {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
 }
