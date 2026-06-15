@@ -34,7 +34,29 @@ export default function AppClient() {
   // Clicked a node → open an "edit" popup for that person.
   const onOpenPerson = useCallback((person) => {
     setPopup({ mode: "edit", person });
+  }, []); 
+
+   // Dragged a node → optimistically move it in state, and save the new position.
+  const onMovePerson = useCallback((id, pos) => {
+    setPeople((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, position_x: pos.x, position_y: pos.y } : p))
+    );
+    fetch(`/api/people/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ position_x: pos.x, position_y: pos.y }),
+    });
   }, []);
+
+  // Deleted a node (via keyboard) → remove it on the server, then refresh.
+  const onDeletePerson = useCallback(
+    async (id) => {
+      await fetch(`/api/people/${id}`, { method: "DELETE" });
+      if (selectedId === id) setSelectedId(null);
+      load();
+    },
+    [load, selectedId]
+  );
 
   if (!loaded) {
     return <p style={{ padding: 40, color: "var(--text-secondary)" }}>Loading…</p>;
@@ -48,6 +70,8 @@ export default function AppClient() {
         onSelect={setSelectedId}
         onPaneCreate={onPaneCreate}
         onOpenPerson={onOpenPerson}
+        onMovePerson={onMovePerson}
+        onDeletePerson={onDeletePerson}
       />
 
       {popup && (
