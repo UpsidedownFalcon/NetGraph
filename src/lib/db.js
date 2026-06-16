@@ -36,6 +36,19 @@ function init() {
       created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
       updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS relationships (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_id   INTEGER NOT NULL,
+      target_id   INTEGER NOT NULL,
+      label       TEXT    NOT NULL DEFAULT '',
+      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (source_id) REFERENCES people(id) ON DELETE CASCADE,
+      FOREIGN KEY (target_id) REFERENCES people(id) ON DELETE CASCADE,
+      CHECK (source_id <> target_id),
+      UNIQUE (source_id, target_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_rel_source ON relationships(source_id);
+    CREATE INDEX IF NOT EXISTS idx_rel_target ON relationships(target_id);
   `);
 
   return database;
@@ -96,4 +109,39 @@ export function updatePerson(id, data) {
 // DELETE a person by id.
 export function deletePerson(id) {
   getDb().prepare("DELETE FROM people WHERE id = ?").run(id);
+}
+
+// ---- Relationships ----
+export function listRelationships() {
+  return getDb().prepare("SELECT * FROM relationships ORDER BY id").all();
+}
+
+export function createRelationship(data) {
+  const d = getDb();
+  const info = d
+    .prepare(
+      `INSERT INTO relationships (source_id, target_id, label)
+       VALUES (@source_id, @target_id, @label)`
+    )
+    .run({ source_id: data.source_id, target_id: data.target_id, label: data.label ?? "" });
+  return d.prepare("SELECT * FROM relationships WHERE id = ?").get(info.lastInsertRowid);
+}
+
+export function updateRelationship(id, data) {
+  const d = getDb();
+  if ("label" in data) {
+    d.prepare("UPDATE relationships SET label = ? WHERE id = ?").run(data.label, id);
+  }
+  return d.prepare("SELECT * FROM relationships WHERE id = ?").get(id);
+}
+
+export function deleteRelationship(id) {
+  getDb().prepare("DELETE FROM relationships WHERE id = ?").run(id);
+}
+
+// Quick existence check, used to give a friendly "already exists" error.
+export function relationshipExists(sourceId, targetId) {
+  return !!getDb()
+    .prepare("SELECT 1 FROM relationships WHERE source_id = ? AND target_id = ?")
+    .get(sourceId, targetId);
 }
