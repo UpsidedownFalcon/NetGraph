@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { Handle, Position } from "@xyflow/react";
+import ReactMarkdown from "react-markdown";
 import { STATUS } from "@/lib/constants";
 
 // The node is the 18px glowing dot. A big invisible handle covers the dot, so
@@ -32,6 +33,7 @@ function PersonNode({ data, selected }) {
 
       {/* the glowing dot itself */}
       <div
+        className="ng-pulse"
         style={{
           width: 18,
           height: 18,
@@ -47,8 +49,12 @@ function PersonNode({ data, selected }) {
       {/* invisible handle covering the whole dot: drag from here to connect */}
       <Handle type="source" position={Position.Top} style={coverHandleStyle} isConnectable />
 
-      {/* optional "ask" label below the dot */}
-      {data.ask ? <div style={labelBase("ask")}>{data.ask}</div> : null}
+      {/* optional "ask" label below the dot — rendered as markdown */}
+      {data.ask ? (
+        <div className="markdown ng-node-md" style={labelBase("ask")}>
+          <ReactMarkdown>{data.ask}</ReactMarkdown>
+        </div>
+      ) : null}
     </div>
   );
 }

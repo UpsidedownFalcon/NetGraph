@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Constellation from "@/components/Constellation";
 import GraphView from "@/components/GraphView";
 import TableView from "@/components/TableView";
 import DetailPopup from "@/components/DetailPopup";
@@ -92,6 +93,8 @@ export default function AppClient() {
 
   return (
     <main style={styles.app}>
+      <Constellation />
+
       <header style={styles.bar}>
         <div style={styles.brand}>
           <span style={styles.brandDot} />

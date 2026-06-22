@@ -89,3 +89,97 @@ textarea {
   border-color: var(--status-contact);
   background: var(--bg-elevated);
 }
+
+/* Rendered markdown inside the detail popup */
+.markdown {
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+.markdown > *:first-child {
+  margin-top: 0;
+}
+.markdown > *:last-child {
+  margin-bottom: 0;
+}
+.markdown p {
+  margin: 0 0 8px;
+}
+.markdown ul,
+.markdown ol {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+.markdown li {
+  margin: 2px 0;
+}
+.markdown h1,
+.markdown h2,
+.markdown h3 {
+  font-size: 14px;
+  margin: 10px 0 6px;
+}
+.markdown a {
+  color: var(--status-friend);
+}
+.markdown code {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  background: var(--bg-deep);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.markdown blockquote {
+  margin: 0 0 8px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+.markdown hr {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 10px 0;
+}
+
+/* Compact markdown for the small, centered label under a node:
+   keep bullets right next to their text instead of far to the left. */
+.ng-node-md p,
+.ng-node-md ul,
+.ng-node-md ol,
+.ng-node-md li {
+  margin: 0;
+  padding: 0;
+}
+.ng-node-md ul,
+.ng-node-md ol {
+  list-style-position: inside;
+}
+
+/* Thin, refined scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Subtle, slow breathing glow for person nodes */
+@keyframes ngPulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.12); }
+}
+.ng-pulse {
+  animation: ngPulse 1.6s ease-in-out infinite;
+}
+
+/* Accessibility: honour users who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

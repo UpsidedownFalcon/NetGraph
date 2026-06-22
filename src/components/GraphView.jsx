@@ -178,7 +178,7 @@ function GraphInner({
   }
 
   return (
-    <div style={{ width: "100%", height: "100%", position: "relative" }}>
+    <div style={{ width: "100%", height: "100%", position: "relative", zIndex: 1 }}>
       <form onSubmit={runSearch} style={searchStyles.wrap}>
         <input
           style={searchStyles.input}

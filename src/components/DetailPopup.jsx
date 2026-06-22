@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { STATUS, STATUS_ORDER, CHANNELS } from "@/lib/constants";
+import MarkdownField from "./MarkdownField";
 
 export default function DetailPopup({ person, mode, onClose, onSaved, onDeleted }) {
   const isCreate = mode === "create";
@@ -159,16 +160,28 @@ export default function DetailPopup({ person, mode, onClose, onSaved, onDeleted 
         </div>
 
         <label style={styles.label} className="mono">MY ASK</label>
-        <textarea style={styles.textarea} value={ask}
-          onChange={(e) => setAsk(e.target.value)} placeholder="What I want from them" />
+        <MarkdownField
+          value={ask}
+          onChange={setAsk}
+          placeholder="What I want from them (markdown supported)"
+          minHeight={44}
+        />
 
         <label style={styles.label} className="mono">BACKGROUND</label>
-        <textarea style={styles.textarea} value={background}
-          onChange={(e) => setBackground(e.target.value)} placeholder="Background" />
+        <MarkdownField
+          value={background}
+          onChange={setBackground}
+          placeholder="Background (markdown supported — try - bullet points)"
+          minHeight={64}
+        />
 
         <label style={styles.label} className="mono">HOW WE MET</label>
-        <textarea style={styles.textarea} value={howWeMet}
-          onChange={(e) => setHowWeMet(e.target.value)} placeholder="How we met" />
+        <MarkdownField
+          value={howWeMet}
+          onChange={setHowWeMet}
+          placeholder="How we met (markdown supported)"
+          minHeight={48}
+        />
 
         <div style={styles.channelsHead}>
           <label style={styles.label} className="mono">CHANNELS</label>
@@ -230,11 +243,6 @@ const styles = {
   swatches: { display: "flex", alignItems: "center", gap: 10 },
   swatch: { width: 18, height: 18, borderRadius: "50%", border: "none", cursor: "pointer" },
   statusLabel: { marginLeft: 6, fontSize: 13, color: "var(--text-secondary)" },
-  textarea: {
-    width: "100%", background: "var(--bg-elevated-2)", border: "1px solid var(--border-subtle)",
-    borderRadius: 8, color: "var(--text-primary)", padding: "9px 11px", fontSize: 13.5,
-    outline: "none", resize: "vertical", fontFamily: "inherit", minHeight: 52, marginTop: 2,
-  },
   channelsHead: { display: "flex", alignItems: "center", justifyContent: "space-between" },
   addBtn: {
     background: "transparent", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)",
