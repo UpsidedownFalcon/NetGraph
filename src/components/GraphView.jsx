@@ -123,7 +123,8 @@ function GraphInner({
         edges={edges}
         edgeTypes={edgeTypes}
         connectionLineType={ConnectionLineType.Straight}
-        connectionMode={ConnectionMode.Loose} 
+        connectionMode={ConnectionMode.Loose}
+        connectOnClick={false}
         onConnect={onConnect}
         onEdgesDelete={onEdgesDelete}
         onPaneClick={onPaneClick}

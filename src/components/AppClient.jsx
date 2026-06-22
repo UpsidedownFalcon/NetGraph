@@ -107,7 +107,10 @@ export default function AppClient() {
         <DetailPopup
           person={popup.person}
           mode={popup.mode}
-          onClose={() => setPopup(null)}
+          onClose={() => {
+            setPopup(null);
+            load(); // refresh so live-saved channels show on reopen
+          }}
           onSaved={() => {
             setPopup(null);
             load();

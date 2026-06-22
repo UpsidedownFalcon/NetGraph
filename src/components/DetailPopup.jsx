@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { STATUS, STATUS_ORDER } from "@/lib/constants";
+import { STATUS, STATUS_ORDER, CHANNELS } from "@/lib/constants";
 
 export default function DetailPopup({ person, mode, onClose, onSaved, onDeleted }) {
   const isCreate = mode === "create";
@@ -12,6 +12,7 @@ export default function DetailPopup({ person, mode, onClose, onSaved, onDeleted 
   const [status, setStatus] = useState(person.status || "to_contact");
   const [background, setBackground] = useState(person.background || "");
   const [howWeMet, setHowWeMet] = useState(person.how_we_met || "");
+  const [channels, setChannels] = useState(person.channels || []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -42,11 +43,21 @@ export default function DetailPopup({ person, mode, onClose, onSaved, onDeleted 
         position_y: person.position_y ?? 0,
       };
       if (isCreate) {
-        await fetch("/api/people", {
+        const res = await fetch("/api/people", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
+        const saved = await res.json();
+        // The person exists now, so persist any channels added in the form.
+        for (const c of channels) {
+          const cRes = await fetch(`/api/people/${saved.id}/channels`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(c),
+          });
+          if (!cRes.ok) throw new Error(`channel save failed (HTTP ${cRes.status})`);
+        }
       } else {
         await fetch(`/api/people/${person.id}`, {
           method: "PATCH",
@@ -67,6 +78,49 @@ export default function DetailPopup({ person, mode, onClose, onSaved, onDeleted 
     if (!confirm("Delete this person?")) return;
     await fetch(`/api/people/${person.id}`, { method: "DELETE" });
     onDeleted();
+  }
+
+  // Add a blank channel row. In edit mode, create it on the server right away.
+  async function addChannel() {
+    const newChannel = { channel: "email", handle: "", is_primary: 0 };
+    if (isCreate) {
+      setChannels([...channels, newChannel]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/people/${person.id}/channels`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newChannel),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const created = await res.json();   // includes the new id
+      setChannels([...channels, created]);
+    } catch (err) {
+      setError(`Could not add channel (${err.message})`);
+    }
+  }
+
+  // Edit one field of a channel row. Update local state, then save if it's a real (saved) row.
+  async function patchChannel(idx, patch) {
+    const next = channels.map((c, i) => (i === idx ? { ...c, ...patch } : c));
+    setChannels(next);
+    if (!isCreate && next[idx].id) {
+      await fetch(`/api/channels/${next[idx].id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+    }
+  }
+
+  // Remove a channel row, and delete it on the server if it was saved.
+  async function removeChannel(idx) {
+    const c = channels[idx];
+    setChannels(channels.filter((_, i) => i !== idx));
+    if (!isCreate && c.id) {
+      await fetch(`/api/channels/${c.id}`, { method: "DELETE" });
+    }
   }
 
   return (
@@ -116,6 +170,30 @@ export default function DetailPopup({ person, mode, onClose, onSaved, onDeleted 
         <textarea style={styles.textarea} value={howWeMet}
           onChange={(e) => setHowWeMet(e.target.value)} placeholder="How we met" />
 
+        <div style={styles.channelsHead}>
+          <label style={styles.label} className="mono">CHANNELS</label>
+          <button style={styles.addBtn} onClick={addChannel}>+ Add</button>
+        </div>
+        {channels.length === 0 && <div style={styles.empty}>No channels yet.</div>}
+        {channels.map((c, i) => (
+          <div key={c.id ?? i} style={styles.channelRow}>
+            <select style={styles.channelSelect} value={c.channel}
+              onChange={(e) => patchChannel(i, { channel: e.target.value })}>
+              {CHANNELS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <input style={styles.channelInput} value={c.handle || ""} placeholder="handle"
+              onChange={(e) => patchChannel(i, { handle: e.target.value })} />
+            <button
+              title="Primary channel"
+              onClick={() => patchChannel(i, { is_primary: c.is_primary ? 0 : 1 })}
+              style={{ ...styles.starBtn, color: c.is_primary ? "var(--status-contact)" : "var(--text-muted)" }}
+            >★</button>
+            <button style={styles.iconBtn} onClick={() => removeChannel(i)} aria-label="Remove">×</button>
+          </div>
+        ))}
+
         {error && <div style={styles.error}>{error}</div>}
 
         <div style={styles.footer}>
@@ -157,6 +235,23 @@ const styles = {
     borderRadius: 8, color: "var(--text-primary)", padding: "9px 11px", fontSize: 13.5,
     outline: "none", resize: "vertical", fontFamily: "inherit", minHeight: 52, marginTop: 2,
   },
+  channelsHead: { display: "flex", alignItems: "center", justifyContent: "space-between" },
+  addBtn: {
+    background: "transparent", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)",
+    borderRadius: 6, padding: "3px 9px", fontSize: 12, marginTop: 8, cursor: "pointer",
+  },
+  empty: { color: "var(--text-muted)", fontSize: 12.5, margin: "4px 0" },
+  channelRow: { display: "flex", alignItems: "center", gap: 6, marginTop: 8 },
+  channelSelect: {
+    background: "var(--bg-elevated-2)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)",
+    borderRadius: 6, padding: "7px 8px", fontSize: 12.5, outline: "none",
+  },
+  channelInput: {
+    flex: 1, background: "var(--bg-elevated-2)", border: "1px solid var(--border-subtle)",
+    color: "var(--text-primary)", borderRadius: 6, padding: "7px 9px", fontSize: 12.5, outline: "none",
+  },
+  starBtn: { background: "transparent", border: "none", fontSize: 16, lineHeight: 1, padding: 2, cursor: "pointer" },
+  iconBtn: { background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 20, lineHeight: 1, padding: "2px 6px", cursor: "pointer" },
   error: { color: "var(--status-avoid)", fontSize: 13, marginTop: 12 },
   footer: { display: "flex", alignItems: "center", gap: 8, marginTop: 20 },
   deleteBtn: {

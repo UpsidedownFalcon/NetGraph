@@ -36,6 +36,18 @@ function init() {
       created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
       updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS channels (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      person_id   INTEGER NOT NULL,
+      channel     TEXT    NOT NULL
+                    CHECK (channel IN ('whatsapp','sms','x','instagram','email','linkedin','discord','other')),
+      handle      TEXT    NOT NULL DEFAULT '',
+      is_primary  INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_channels_person ON channels(person_id);
+
     CREATE TABLE IF NOT EXISTS relationships (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       source_id   INTEGER NOT NULL,
@@ -62,14 +74,26 @@ export function getDb() {
 
 // ---- People: the CRUD functions the rest of the app will call ----
 
-// READ all people, oldest first.
+// READ all people, oldest first — each with its channels attached.
 export function listPeople() {
-  return getDb().prepare("SELECT * FROM people ORDER BY created_at").all();
+  const d = getDb();
+  const people = d.prepare("SELECT * FROM people ORDER BY created_at").all();
+  const channels = d.prepare("SELECT * FROM channels ORDER BY id").all();
+  // Group channels by their person_id so we can attach them in one pass.
+  const byPerson = {};
+  for (const c of channels) {
+    (byPerson[c.person_id] = byPerson[c.person_id] || []).push(c);
+  }
+  return people.map((p) => ({ ...p, channels: byPerson[p.id] || [] }));
 }
 
-// READ one person by id (returns undefined if not found).
+// READ one person by id (returns undefined if not found), with its channels.
 export function getPerson(id) {
-  return getDb().prepare("SELECT * FROM people WHERE id = ?").get(id);
+  const d = getDb();
+  const person = d.prepare("SELECT * FROM people WHERE id = ?").get(id);
+  if (!person) return undefined;
+  person.channels = d.prepare("SELECT * FROM channels WHERE person_id = ? ORDER BY id").all(id);
+  return person;
 }
 
 // CREATE a new person; fills sensible defaults for anything not provided.
@@ -109,6 +133,44 @@ export function updatePerson(id, data) {
 // DELETE a person by id.
 export function deletePerson(id) {
   getDb().prepare("DELETE FROM people WHERE id = ?").run(id);
+}
+
+// ---- Channels (each belongs to one person) ----
+
+// CREATE a channel for a person; returns the new row.
+export function createChannel(personId, data) {
+  const d = getDb();
+  const info = d
+    .prepare(
+      `INSERT INTO channels (person_id, channel, handle, is_primary)
+       VALUES (@person_id, @channel, @handle, @is_primary)`
+    )
+    .run({
+      person_id: personId,
+      channel: data.channel,
+      handle: data.handle ?? "",
+      is_primary: data.is_primary ? 1 : 0,   // coerce true/false → 1/0 for SQLite
+    });
+  return d.prepare("SELECT * FROM channels WHERE id = ?").get(info.lastInsertRowid);
+}
+
+// UPDATE only the channel fields that were passed in.
+export function updateChannel(id, data) {
+  const d = getDb();
+  const allowed = ["channel", "handle", "is_primary"];
+  const fields = allowed.filter((k) => k in data);
+  if (fields.length === 0) return d.prepare("SELECT * FROM channels WHERE id = ?").get(id);
+  const setClause = fields.map((f) => `${f} = @${f}`).join(", ");
+  const params = {};
+  for (const f of fields) params[f] = f === "is_primary" ? (data[f] ? 1 : 0) : data[f];
+  params.id = id;
+  d.prepare(`UPDATE channels SET ${setClause} WHERE id = @id`).run(params);
+  return d.prepare("SELECT * FROM channels WHERE id = ?").get(id);
+}
+
+// DELETE a channel by id.
+export function deleteChannel(id) {
+  getDb().prepare("DELETE FROM channels WHERE id = ?").run(id);
 }
 
 // ---- Relationships ----
