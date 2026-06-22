@@ -1,7 +1,8 @@
 import { updateRelationship, deleteRelationship } from "@/lib/db";
+import { withAuth } from "@/lib/session";
 
 // PATCH /api/relationships/:id  → update the relationship (only its label)
-export async function PATCH(request, ctx) {
+export const PATCH = withAuth(async (request, ctx) => {
   const { id } = await ctx.params;
   let body;
   try {
@@ -10,11 +11,11 @@ export async function PATCH(request, ctx) {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
   return Response.json(updateRelationship(Number(id), body));
-}
+});
 
 // DELETE /api/relationships/:id  → remove the relationship
-export async function DELETE(request, ctx) {
+export const DELETE = withAuth(async (request, ctx) => {
   const { id } = await ctx.params;
   deleteRelationship(Number(id));
   return Response.json({ ok: true });
-} 
+});

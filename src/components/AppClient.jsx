@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Constellation from "@/components/Constellation";
 import GraphView from "@/components/GraphView";
 import TableView from "@/components/TableView";
 import DetailPopup from "@/components/DetailPopup";
 
 export default function AppClient() {
+  const router = useRouter();
   const [people, setPeople] = useState([]);
   const [relationships, setRelationships] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -20,10 +22,15 @@ export default function AppClient() {
       fetch("/api/people"),
       fetch("/api/relationships"),
     ]);
+    // If the session expired, the API returns 401 — bounce to the login page.
+    if (peopleRes.status === 401 || relRes.status === 401) {
+      router.replace("/login");
+      return;
+    }
     setPeople(await peopleRes.json());
     setRelationships(await relRes.json());
     setLoaded(true);
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     load();
@@ -87,6 +94,13 @@ export default function AppClient() {
     [load, selectedId]
   );
 
+  // Log out: destroy the session, then go to the login page.
+  async function logout() {
+    await fetch("/api/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();   // re-run server components so they see the cleared cookie
+  }
+
   if (!loaded) {
     return <p style={{ padding: 40, color: "var(--text-secondary)" }}>Loading…</p>;
   }
@@ -114,6 +128,7 @@ export default function AppClient() {
             Table
           </button>
         </nav>
+        <button onClick={logout} style={styles.logout}>Log out</button>
       </header>
 
       <section style={styles.body}>
@@ -181,6 +196,11 @@ const styles = {
     padding: "6px 12px", fontSize: 13, borderRadius: 7, cursor: "pointer",
   },
   tabActive: { background: "var(--bg-elevated-2)", color: "var(--text-primary)" },
+  logout: {
+    marginLeft: "auto",   // push it to the far right of the bar
+    background: "transparent", border: "1px solid var(--border-subtle)",
+    color: "var(--text-secondary)", borderRadius: 7, padding: "6px 12px", fontSize: 12.5,
+  },
   // flex:1 + minHeight:0 lets the graph/table fill the remaining height correctly.
   body: { position: "relative", flex: 1, minHeight: 0 },
 };

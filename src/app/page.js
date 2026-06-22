@@ -1,29 +1,8 @@
-export default function Home() {
-  return (
-    <main style={styles.wrap}>
-      <span style={styles.dot} />
-      <h1 style={styles.title}>NetGraph</h1>
-      <p style={styles.subtitle}>A private map of the people you meet.</p>
-    </main>
-  );
-}
+import { redirect } from "next/navigation";
+import { isAuthed } from "@/lib/session";
 
-const styles = {
-  wrap: {
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  dot: {
-    width: 14,
-    height: 14,
-    borderRadius: "50%",
-    background: "var(--status-known)",
-    boxShadow: "0 0 16px var(--glow-known)",
-  },
-  title: { fontSize: 24, fontWeight: 600, margin: 0 },
-  subtitle: { color: "var(--text-secondary)", margin: 0 },
-}; 
+// The root URL just routes you to the right place based on auth.
+export default async function Home() {
+  if (await isAuthed()) redirect("/app");
+  redirect("/login");
+}

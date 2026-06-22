@@ -1,10 +1,11 @@
 import { listRelationships, createRelationship, relationshipExists, getPerson } from "@/lib/db";
+import { withAuth } from "@/lib/session";
 
-export async function GET() {
+export const GET = withAuth(async () => {
   return Response.json(listRelationships());
-}
+});
 
-export async function POST(request) {
+export const POST = withAuth(async (request) => {
   let body;
   try {
     body = await request.json();
@@ -30,4 +31,4 @@ export async function POST(request) {
 
   const rel = createRelationship({ source_id: source, target_id: target, label: body.label });
   return Response.json(rel, { status: 201 });
-} 
+});

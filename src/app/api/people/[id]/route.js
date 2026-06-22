@@ -1,17 +1,18 @@
 import { getPerson, updatePerson, deletePerson } from "@/lib/db";
+import { withAuth } from "@/lib/session";
 
 const STATUSES = ["known", "to_contact", "avoid", "friend"];
 
 // GET /api/people/:id  → return one person, or 404 if not found
-export async function GET(request, ctx) {
+export const GET = withAuth(async (request, ctx) => {
   const { id } = await ctx.params;
   const person = getPerson(Number(id));
   if (!person) return Response.json({ error: "Not found" }, { status: 404 });
   return Response.json(person);
-} 
+});
 
 // PATCH /api/people/:id  → update some fields of the person
-export async function PATCH(request, ctx) {
+export const PATCH = withAuth(async (request, ctx) => {
   const { id } = await ctx.params;
   const existing = getPerson(Number(id));
   if (!existing) return Response.json({ error: "Not found" }, { status: 404 });
@@ -33,11 +34,11 @@ export async function PATCH(request, ctx) {
   if ("name" in body) body.name = body.name.trim();
 
   return Response.json(updatePerson(Number(id), body));
-} 
+});
 
 // DELETE /api/people/:id  → remove the person
-export async function DELETE(request, ctx) {
+export const DELETE = withAuth(async (request, ctx) => {
   const { id } = await ctx.params;
   deletePerson(Number(id));
   return Response.json({ ok: true });
-} 
+});

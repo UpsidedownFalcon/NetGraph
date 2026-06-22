@@ -1,14 +1,15 @@
 import { listPeople, createPerson } from "@/lib/db";
+import { withAuth } from "@/lib/session";
 
 const STATUSES = ["known", "to_contact", "avoid", "friend"];
 
 // GET /api/people  → return the list of all people as JSON
-export async function GET() {
-  return Response.json(listPeople()); 
-} 
+export const GET = withAuth(async () => {
+  return Response.json(listPeople());
+});
 
 // POST /api/people  → create a new person from the JSON body
-export async function POST(request) {
+export const POST = withAuth(async (request) => {
   // 1. Read & parse the JSON body. If it's malformed, reject with 400.
   let body;
   try {
@@ -29,5 +30,4 @@ export async function POST(request) {
   // 4. All good — create the person and return it with 201 Created.
   const person = createPerson({ ...body, name });
   return Response.json(person, { status: 201 });
-} 
-
+});
