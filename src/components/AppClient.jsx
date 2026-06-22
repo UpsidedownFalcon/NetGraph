@@ -6,15 +6,19 @@ import DetailPopup from "@/components/DetailPopup";
 
 export default function AppClient() {
   const [people, setPeople] = useState([]);
+  const [relationships, setRelationships] = useState([]); 
   const [loaded, setLoaded] = useState(false);
   const [selectedId, setSelectedId] = useState(null);  // which node is highlighted
   const [popup, setPopup] = useState(null);            // { mode, person } or null
 
-  // Load people from the API. useCallback so it's a stable reference for the effect.
+  // Load people AND relationships from the API in parallel.
   const load = useCallback(async () => {
-    const res = await fetch("/api/people");
-    const data = await res.json();
-    setPeople(data);
+    const [peopleRes, relRes] = await Promise.all([
+      fetch("/api/people"),
+      fetch("/api/relationships"),
+    ]);
+    setPeople(await peopleRes.json());
+    setRelationships(await relRes.json());
     setLoaded(true);
   }, []);
 
@@ -46,7 +50,29 @@ export default function AppClient() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ position_x: pos.x, position_y: pos.y }),
     });
-  }, []);
+  }, []); 
+
+  // Dragged a wire between two dots → create the relationship, then refresh.
+  const onConnectPeople = useCallback(
+    async (sourceId, targetId) => {
+      await fetch("/api/relationships", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source_id: sourceId, target_id: targetId }),
+      });
+      load();
+    },
+    [load]
+  );
+
+  // Removed a connection → delete it on the server, then refresh.
+  const onDeleteRelationship = useCallback(
+    async (id) => {
+      await fetch(`/api/relationships/${id}`, { method: "DELETE" });
+      load();
+    },
+    [load]
+  );
 
   // Deleted a node (via keyboard) → remove it on the server, then refresh.
   const onDeletePerson = useCallback(
@@ -66,12 +92,15 @@ export default function AppClient() {
     <main style={{ height: "100%" }}>
       <GraphView
         people={people}
+        relationships={relationships}
         selectedId={selectedId}
         onSelect={setSelectedId}
         onPaneCreate={onPaneCreate}
         onOpenPerson={onOpenPerson}
+        onConnectPeople={onConnectPeople}
         onMovePerson={onMovePerson}
         onDeletePerson={onDeletePerson}
+        onDeleteRelationship={onDeleteRelationship}
       />
 
       {popup && (
