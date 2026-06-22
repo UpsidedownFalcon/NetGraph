@@ -63,3 +63,29 @@ textarea {
 .mono {
   font-family: var(--font-geist-mono), ui-monospace, monospace;
 }
+
+/* Editable cells in the table view: look like real input fields, and
+   highlight on hover/focus so it's obvious they can be edited. */
+.cell-input {
+  width: 100%;
+  min-width: 120px;
+  background: var(--bg-elevated-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: var(--text-primary);
+  padding: 7px 8px;
+  font-size: 13px;
+  outline: none;
+  cursor: text;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.cell-input::placeholder {
+  color: var(--text-muted);
+}
+.cell-input:hover {
+  border-color: var(--text-muted);
+}
+.cell-input:focus {
+  border-color: var(--status-contact);
+  background: var(--bg-elevated);
+}
