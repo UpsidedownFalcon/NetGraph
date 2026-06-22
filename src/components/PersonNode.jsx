@@ -12,7 +12,16 @@ function PersonNode({ data, selected }) {
   const s = STATUS[data.status] || STATUS.to_contact;
 
   return (
-    <div style={{ position: "relative", width: 18, height: 18 }}>
+    <div
+      style={{
+        position: "relative",
+        width: 18,
+        height: 18,
+        // Fade out when something else is selected and this isn't a neighbor.
+        opacity: data.dimmed ? 0.25 : 1,
+        transition: "opacity 220ms ease",
+      }}
+    >
       {/* drag grip — the only place that moves the node */}
       <div className="ng-drag-handle" title="Drag to move" style={gripStyle}>
         ⠿

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -30,7 +30,21 @@ function GraphInner({
   onDeletePerson,
   onDeleteRelationship, 
 }) {
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, setCenter } = useReactFlow();
+  const [query, setQuery] = useState("");
+
+  // When someone is selected, compute the set of "in focus" people:
+  // the selected person plus everyone directly connected to them.
+  // A Set gives instant .has() lookups. null means "nobody selected".
+  const neighborIds = useMemo(() => {
+    if (selectedId == null) return null;
+    const set = new Set([selectedId]);
+    for (const r of relationships) {
+      if (r.source_id === selectedId) set.add(r.target_id);
+      if (r.target_id === selectedId) set.add(r.source_id);
+    }
+    return set;
+  }, [selectedId, relationships]);
 
   // Build the desired nodes from our data.
   const computedNodes = useMemo(
@@ -39,11 +53,17 @@ function GraphInner({
         id: String(p.id),
         type: "person",
         position: { x: p.position_x, y: p.position_y },
-        data: { name: p.name, ask: p.ask, status: p.status },
+        data: {
+          name: p.name,
+          ask: p.ask,
+          status: p.status,
+          // Dim everyone who isn't the selected person or a direct neighbor.
+          dimmed: neighborIds ? !neighborIds.has(p.id) : false,
+        },
         selected: selectedId === p.id,
-        dragHandle: ".ng-drag-handle", 
+        dragHandle: ".ng-drag-handle",
       })),
-    [people, selectedId]
+    [people, selectedId, neighborIds]
   );
 
   // Let React Flow own the node state (so dragging is smooth)...
@@ -57,19 +77,38 @@ function GraphInner({
     setNodes(computedNodes);
   }, [computedNodes, setNodes]);
 
+  // Press Escape to clear the focus/highlight (un-dim everyone).
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === "Escape") onSelect(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onSelect]);
+
   // Turn each relationship row into a React Flow edge object.
   const edges = useMemo(
     () =>
-      relationships.map((r) => ({
-        id: String(r.id),
-        source: String(r.source_id),
-        target: String(r.target_id),
-        type: "floating",
-        data: { onDelete: () => onDeleteRelationship(r.id) },
-        markerEnd: { type: MarkerType.ArrowClosed, color: "#8a93a8" },
-        style: { stroke: "var(--edge-default)", strokeWidth: 1.4 },
-      })),
-    [relationships, onDeleteRelationship]
+      relationships.map((r) => {
+        // "active" = this edge touches the selected person.
+        const active =
+          selectedId != null && (r.source_id === selectedId || r.target_id === selectedId);
+        const dim = selectedId != null && !active;
+        return {
+          id: String(r.id),
+          source: String(r.source_id),
+          target: String(r.target_id),
+          type: "floating",
+          data: { onDelete: () => onDeleteRelationship(r.id) },
+          markerEnd: { type: MarkerType.ArrowClosed, color: active ? "#8a93a8" : "#3a4150" },
+          style: {
+            stroke: active ? "var(--edge-active)" : "var(--edge-default)",
+            strokeWidth: active ? 2 : 1.4,
+            opacity: dim ? 0.2 : 1,
+          },
+        };
+      }),
+    [relationships, selectedId, onDeleteRelationship]
   );
 
   // Finished dragging a wire from one dot to another → create a relationship.
@@ -94,7 +133,12 @@ function GraphInner({
   );
 
   const onNodeClick = useCallback(
-    (_e, node) => {
+    (e, node) => {
+      // Clicking the drag grip just focuses/highlights — it does NOT open the popup.
+      if (e.target?.closest?.(".ng-drag-handle")) {
+        onSelect(Number(node.id));
+        return;
+      }
       const person = people.find((p) => String(p.id) === node.id);
       if (person) {
         onSelect(person.id);
@@ -105,8 +149,11 @@ function GraphInner({
   );
 
   const onNodeDragStop = useCallback(
-    (_e, node) => onMovePerson(Number(node.id), node.position),
-    [onMovePerson]
+    (_e, node) => {
+      onSelect(Number(node.id));            // keep them focused/highlighted
+      onMovePerson(Number(node.id), node.position);
+    },
+    [onSelect, onMovePerson]
   );
 
   const onNodesDelete = useCallback(
@@ -114,8 +161,33 @@ function GraphInner({
     [onDeletePerson]
   );
 
+  // Find the first person matching the query, select them, and fly to them.
+  function runSearch(e) {
+    e.preventDefault();
+    const q = query.trim().toLowerCase();
+    if (!q) return;
+    const match = people.find((p) => {
+      const fields = [p.name, p.ask, p.background, p.how_we_met];
+      for (const c of p.channels || []) fields.push(c.handle, c.channel);
+      return fields.filter(Boolean).some((t) => String(t).toLowerCase().includes(q));
+    });
+    if (match) {
+      onSelect(match.id);
+      setCenter(match.position_x, match.position_y, { zoom: 1.2, duration: 600 });
+    }
+  }
+
   return (
-    <div style={{ width: "100%", height: "100%" }}>
+    <div style={{ width: "100%", height: "100%", position: "relative" }}>
+      <form onSubmit={runSearch} style={searchStyles.wrap}>
+        <input
+          style={searchStyles.input}
+          placeholder="Search anyone or anything…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </form>
+
       <ReactFlow
         nodes={nodes}
         onNodesChange={onNodesChange}
@@ -143,10 +215,24 @@ function GraphInner({
   );
 }
 
+const searchStyles = {
+  wrap: { position: "absolute", top: 16, left: 16, zIndex: 5 },
+  input: {
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border-subtle)",
+    borderRadius: 8,
+    color: "var(--text-primary)",
+    padding: "8px 12px",
+    fontSize: 13,
+    width: 220,
+    outline: "none",
+  },
+};
+
 export default function GraphView(props) {
   return (
     <ReactFlowProvider>
       <GraphInner {...props} />
     </ReactFlowProvider>
   );
-} 
+}
